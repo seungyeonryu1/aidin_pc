@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>오시는 길 | AIDIN ROBOTICS</title>
+<link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://fastly.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --red:#D40000;--ink:#1a1a1a;--gray:#6b727a;--line:#e6e8eb;--bg:#f7f8f9;--radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Pretendard',-apple-system,system-ui,sans-serif;color:var(--ink);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:960px;margin:0 auto;padding:56px 24px 80px;}
+
+  .page-head{margin-bottom:32px;}
+  .page-head .eyebrow{font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--red);text-transform:uppercase;margin-bottom:10px;}
+  .page-head h1{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .page-head p{margin-top:10px;color:var(--gray);font-size:15px;}
+
+  /* 지도 */
+  .map-box{position:relative;width:100%;aspect-ratio:16/6.2;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--bg);}
+  #map{width:100%;height:100%;}
+  .map-badge{position:absolute;top:14px;left:14px;z-index:5;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.10);pointer-events:none;}
+  .map-badge .dot{width:9px;height:9px;border-radius:50%;background:var(--red);flex:0 0 auto;box-shadow:0 0 0 4px rgba(212,0,0,.15);}
+  .map-fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--gray);font-size:14px;}
+
+  /* 주소 */
+  .addr-card{margin-top:18px;border:1px solid var(--line);border-radius:var(--radius);padding:24px 26px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;}
+  .addr-card .label{font-size:12px;font-weight:700;color:var(--red);letter-spacing:.08em;margin-bottom:8px;}
+  .addr-card .main{font-size:18px;font-weight:700;}
+  .addr-card .sub{font-size:14px;color:var(--gray);margin-top:4px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:11px 16px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:.15s;white-space:nowrap;}
+  .btn:hover{border-color:#c9ccd0;background:var(--bg);}
+  .btn.primary{background:var(--red);color:#fff;border-color:var(--red);}
+  .btn.primary:hover{background:#b80000;}
+
+  /* 교통 */
+  .routes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px;}
+  .route{border:1px solid var(--line);border-radius:var(--radius);padding:30px;}
+  .route h2{font-size:19px;font-weight:800;display:flex;align-items:center;gap:11px;margin-bottom:22px;}
+  .route h2 .ic{width:34px;height:34px;border-radius:9px;background:rgba(212,0,0,.08);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .route h2 .ic svg{width:19px;height:19px;}
+  .item{padding:18px 0;border-top:1px solid var(--line);}
+  .item:first-of-type{border-top:0;padding-top:0;}
+  .item .t{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#444;letter-spacing:.02em;margin-bottom:8px;}
+  .item .t::before{content:'';width:3px;height:13px;border-radius:2px;background:var(--red);flex:0 0 auto;}
+  .item .d{font-size:15px;color:#222;}
+  .item .d .em{font-weight:700;color:var(--ink);}
+  .note{margin-top:6px;font-size:13.5px;color:var(--gray);}
+
+  @media (max-width:720px){
+    .wrap{padding:40px 18px 64px;}
+    .page-head h1{font-size:27px;}
+    .map-box{aspect-ratio:16/9;}
+    .routes{grid-template-columns:1fr;}
+    .addr-card{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-head">
+    <div class="eyebrow">Location</div>
+    <h1>오시는 길</h1>
+    <p>에이딘로보틱스 본사 방문을 환영합니다.</p>
+  </div>
+
+  <!-- 지도 (네이버 지도) -->
+  <div class="map-box">
+    <span class="map-badge"><span class="dot"></span>AIDIN ROBOTICS 본사</span>
+    <div id="map"></div>
+    <div id="mapFallback" class="map-fallback">지도를 불러오지 못했습니다. 아래 ‘네이버 지도 길찾기’ 버튼으로 위치를 확인해 주세요.</div>
+  </div>
+
+  <!-- 주소 -->
+  <div class="addr-card">
+    <div class="addr-text">
+      <div class="label">ADDRESS</div>
+      <div class="main">경기도 안양시 동안구 시민대로327번길 12-20, 5층</div>
+      <div class="sub">(우) 14055 · AIDIN ROBOTICS</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="copyBtn">주소 복사</button>
+      <a class="btn primary" target="_blank" rel="noopener"
+         href="https://map.naver.com/p/entry/place/1327747790">네이버 지도 길찾기</a>
+    </div>
+  </div>
+
+  <!-- 교통 -->
+  <div class="routes">
+    <div class="route">
+      <h2>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#D40000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"/><path d="M4 13h16v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/></svg></span>
+        자가용 이용 시
+      </h2>
+      <div class="item">
+        <div class="t">내비게이션</div>
+        <div class="d"><span class="em">‘에이딘로보틱스’</span> 또는 주소 <span class="em">‘시민대로327번길 12-20’</span> 검색</div>
+        <div class="note">수도권제1순환고속도로 평촌 IC 진출 후 약 10분</div>
+      </div>
+      <div class="item">
+        <div class="t">주차</div>
+        <div class="d">건물 내 주차장 이용 가능</div>
+        <div class="note">방문 전 미리 연락 주시면 주차 안내를 도와드립니다.</div>
+      </div>
+    </div>
+
+    <div class="route">
+      <h2>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#D40000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="13" rx="2"/><path d="M4 11h16"/><path d="M8 20l-1.5 2M16 20l1.5 2"/></svg></span>
+        대중교통 이용 시
+      </h2>
+      <div class="item">
+        <div class="t">지하철</div>
+        <div class="d"><span class="em">4호선 평촌역</span> 하차 → 도보 약 12분 또는 택시 약 5분</div>
+        <div class="note">4호선 범계역에서도 버스·택시로 이동 가능합니다.</div>
+      </div>
+      <div class="item">
+        <div class="t">버스</div>
+        <div class="d"><span class="em">‘법원·검찰청’ 또는 ‘안양시청’ 정류장</span> 하차 → 도보 약 4분</div>
+        <div class="note">간선 22 · 마을 5-1, 7, 10-1 · 광역 1303, 3330 등</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!--
+  ▼▼▼ 네이버 지도 키 설정 ▼▼▼
+  Client ID(6ww2u97x9q) 적용 완료. 등록한 도메인(예: GitHub Pages)에서 https로 열어야 지도가 표시됩니다.
+-->
+<script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=6ww2u97x9q&submodules=geocoder&callback=initNaverMap"></script>
+<script>
+  var AIDIN_ADDR = '경기도 안양시 동안구 시민대로327번길 12-20';
+  // geocode 실패 시 임시로 쓰는 대략 좌표(평촌 일대) — 키 정상 설정 시 주소로 자동 보정됩니다.
+  var FALLBACK = { lat: 37.3958, lng: 126.9535 };
+
+  function initNaverMap(){
+    var center = new naver.maps.LatLng(FALLBACK.lat, FALLBACK.lng);
+    var map = new naver.maps.Map('map', { center: center, zoom: 17, scrollWheelZoom: false });
+    var marker = new naver.maps.Marker({ position: center, map: map });
+    naver.maps.Event.addListener(marker, 'click', function(){
+      window.open('https://map.naver.com/p/entry/place/1327747790', '_blank');
+    });
+
+    if (naver.maps.Service && naver.maps.Service.geocode) {
+      naver.maps.Service.geocode({ query: AIDIN_ADDR }, function(status, res){
+        if (status === naver.maps.Service.Status.OK && res.v2 && res.v2.addresses && res.v2.addresses.length){
+          var a = res.v2.addresses[0];
+          var ll = new naver.maps.LatLng(parseFloat(a.y), parseFloat(a.x));
+          map.setCenter(ll); marker.setPosition(ll);
+        }
+      });
+    }
+  }
+
+  // 키 미설정/인증 실패 시 안내 표시
+  window.navermap_authFailure = function(){
+    document.getElementById('map').style.display = 'none';
+    document.getElementById('mapFallback').style.display = 'flex';
+  };
+  // 스크립트 로드 자체가 실패한 경우
+  window.addEventListener('load', function(){
+    if (!(window.naver && window.naver.maps)) {
+      document.getElementById('map').style.display = 'none';
+      document.getElementById('mapFallback').style.display = 'flex';
+    }
+  });
+
+  // 주소 복사
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var addr = '경기도 안양시 동안구 시민대로327번길 12-20, 5층';
+    var btn = this;
+    var done = function(){ btn.textContent='복사 완료'; setTimeout(function(){btn.textContent='주소 복사';},1500); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(addr).then(done).catch(function(){fallback(addr);done();});
+    } else { fallback(addr); done(); }
+    function fallback(t){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);}
+  });
+</script>
+</body>
+</html>
