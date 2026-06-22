@@ -2100,8 +2100,17 @@ window.__TITLES = {"aidin_location.html": "오시는 길 | AIDIN ROBOTICS", "aid
   }
   function loadIntoFrame(name, hash){
     if(!window.__PAGES[name]) return false;
-    var html = decodeB64(window.__PAGES[name]);
     var f = document.getElementById('pvFrame');
+    // 네이버 지도가 있는 페이지는 srcdoc(about:srcdoc)에선 도메인 인증이 안 되므로 실제 파일로 로드
+    var EXTERNAL_PAGES = { 'aidin_location.html': true };
+    if(EXTERNAL_PAGES[name]){
+      f.removeAttribute('srcdoc');
+      f.src = name + (hash ? ('#'+hash) : '');
+      document.getElementById('pvTitle').textContent = window.__TITLES[name] || '';
+      document.getElementById('pageViewer').scrollTop = 0;
+      return true;
+    }
+    var html = decodeB64(window.__PAGES[name]);
     f.onload = function(){
       var doc;
       try { doc = f.contentDocument; } catch(e){ return; }
@@ -2138,7 +2147,7 @@ window.__TITLES = {"aidin_location.html": "오시는 길 | AIDIN ROBOTICS", "aid
   };
   window.closePage = function(){
     document.getElementById('pageViewer').classList.remove('show');
-    document.getElementById('pvFrame').srcdoc='';
+    var _pf=document.getElementById('pvFrame'); _pf.srcdoc=''; _pf.removeAttribute('src');
     document.documentElement.style.overflow='';
     document.body.style.overflow='';
   };
